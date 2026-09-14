@@ -135,6 +135,16 @@ A member/research image that doesn't start with `member/` or `research/` (a full
 ## Research & Publications
 
 - **Publications** (`/publications`) is the paper list — built from a **`Publications`** tab (same layout the old `Research` tab used: `Category`, `Title`, `Authors`, `Booktitle`, `Links`, `Tags`).
+
+    The `Authors` and `Booktitle` cells support Markdown, plus these shortcuts for common formatting (no HTML/CSS needed):
+
+    | Shortcut | Result |
+    | --- | --- |
+    | `[red]text[/red]` | <span style="color:#c0392b">red text</span> |
+    | `[blue]text[/blue]` | <span style="color:#2563eb">blue text</span> |
+    | `[b]text[/b]` (or `**text**`) | **bold** |
+    | `[i]text[/i]` (or `*text*`) | *italic* |
+    | `[u]text[/u]` | <u>underline</u> |
 - **Research** (`/research`) is an introduction page — built from a **`Research`** tab with one row per topic:
 
 | Title | Image | Content (Markdown) |

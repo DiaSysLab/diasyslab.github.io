@@ -250,6 +250,24 @@ def conv_members(table, root_id=''):
         groups.append(group)
     return groups
 
+# Simple [tag]text[/tag] shortcuts so a sheet editor doesn't have to remember
+# raw HTML/CSS for common inline formatting. Each expands to a plain HTML
+# tag, which both the noscript (Python-Markdown) and interactive
+# (markdown-it, via <vue-markdown :html="true">) renderers pass through as-is.
+TEXT_SHORTCUTS = [
+    (re.compile(r'\[red\](.*?)\[/red\]', re.I | re.S), r'<span style="color:#c0392b">\1</span>'),
+    (re.compile(r'\[blue\](.*?)\[/blue\]', re.I | re.S), r'<span style="color:#2563eb">\1</span>'),
+    (re.compile(r'\[b\](.*?)\[/b\]', re.I | re.S), r'<strong>\1</strong>'),
+    (re.compile(r'\[i\](.*?)\[/i\]', re.I | re.S), r'<em>\1</em>'),
+    (re.compile(r'\[u\](.*?)\[/u\]', re.I | re.S), r'<u>\1</u>'),
+]
+
+def apply_text_shortcuts(text):
+    text = text or ''
+    for pattern, replacement in TEXT_SHORTCUTS:
+        text = pattern.sub(replacement, text)
+    return text
+
 def conv_research(table):
     groups = []
     group = None
@@ -264,6 +282,8 @@ def conv_research(table):
         item = row_to_dict(row, ['title', 'authors', 'booktitle', 'links', 'tags'], 1)
         if 'tags' in item:
             item['tags'] = [tag.strip() for tag in (item['tags'] or '').split(',') if tag]
+        item['authors'] = apply_text_shortcuts(item.get('authors', ''))
+        item['booktitle'] = apply_text_shortcuts(item.get('booktitle', ''))
         group['rows'].append(item)
     if group:
         groups.append(group)

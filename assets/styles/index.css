@@ -301,6 +301,14 @@ body {
     font-style: italic;
     color: var(--grey-color);
 }
+/* The interactive (Vue) authors/booktitle are rendered via <vue-markdown>,
+   which wraps its output in a <p>; strip that <p>'s margin so it stays a
+   tight single line, matching the plain-text noscript fallback. */
+.research-item .authors p,
+.research-item .booktitle p {
+    margin: 0;
+    padding: 0;
+}
 
 .link-item {
     position: relative;
