@@ -290,8 +290,11 @@ def conv_research(table):
     return groups
 
 def conv_tags(table):
+    # Row 2 (the tab's first data row) is reserved as an on/off switch for
+    # the whole Topics feature (see topics_enabled) rather than a real tag,
+    # so real tags start from row 3.
     tags = {}
-    for row in table:
+    for row in table[1:]:
         if is_empty_row(row):
             continue
         tags[row[0]] = {
@@ -300,6 +303,14 @@ def conv_tags(table):
             'color': row[3] if len(row) > 3 else '',
         }
     return tags
+
+def topics_enabled(table):
+    # Row 2's Tag (B) column is the switch: "off" hides the Topics filter
+    # bar and per-paper tag badges everywhere on Publications. Anything else
+    # (on, blank, or a missing row) leaves it on.
+    switch_row = table[0] if table else []
+    switch_value = (switch_row[1] if len(switch_row) > 1 else '').strip().lower()
+    return switch_value != 'off'
 
 def conv_links(table):
     groups = []
@@ -561,6 +572,7 @@ def load_data():
         'announcements': conv_announcements(tables[1]),
         'members': conv_members(tables[2], root_id),
         'tags': conv_tags(tables[3]),
+        'topics_enabled': topics_enabled(tables[3]),
         'links': conv_links(tables[4]),
         'pages': conv_pages(tables[5]),
         'redirects': conv_redirects(tables[6]),

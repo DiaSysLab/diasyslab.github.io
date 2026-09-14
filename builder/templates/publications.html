@@ -39,6 +39,7 @@
     {% with screen_background=data.website.research_background,screen_title='Publications' %}
     {% include 'screen.html' %}
     {% endwith %}
+    {% if data.topics_enabled %}
     <div class="row">
         <div class="container">
             <div class="tag-selector v-padded">
@@ -61,6 +62,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
     <div class="row" v-for="(group, i) in research" :key="i">
         <div class="container">
             <div class="category v-padded">
@@ -69,11 +71,13 @@
                     <div class="research-item row-item" :class="{ hidden: isHidden(item.tags) }">
                         <div class="title-row">
                             <h4 class="title">[[ item.title ]]</h4>
+                            {% if data.topics_enabled %}
                             <template v-for="tagId in item.tags">
                                 <div class="tag" v-if="tagId in tags" :key="tagId" :style="{ backgroundColor: tags[tagId].color }">
                                     [[ tags[tagId].tag ]]
                                 </div>
                             </template>
+                            {% endif %}
                         </div>
                         <vue-markdown class="authors" :source="item.authors" :html="true" :breaks="false"></vue-markdown>
                         <vue-markdown class="booktitle" :source="item.booktitle" :html="true" :breaks="false"></vue-markdown>
