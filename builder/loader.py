@@ -415,8 +415,18 @@ def load_member_pages(doc_id, root_id=''):
         if not title.startswith(MEMBER_PAGE_PREFIX):
             continue
         name = title[len(MEMBER_PAGE_PREFIX):].strip()
-        slug = slugify(name)
-        if not name or not slug:
+        # "Members - pi|Principal Investigator" splits the URL slug from the
+        # displayed page title, so the URL can stay short while the page
+        # shows a full name. Without a "|", the tab name is used for both,
+        # same as before.
+        if '|' in name:
+            slug_source, display_name = name.split('|', 1)
+            slug = slugify(slug_source)
+            display_name = display_name.strip()
+        else:
+            slug = slugify(name)
+            display_name = name
+        if not display_name or not slug:
             continue
         try:
             tables = load_ranges(doc_id, ["'%s'!A2:H" % title])
@@ -425,7 +435,7 @@ def load_member_pages(doc_id, root_id=''):
             continue
         pages.append({
             'slug': slug,
-            'title': name,
+            'title': display_name,
             'members': conv_members(tables[0], root_id) if tables else [],
         })
     return pages

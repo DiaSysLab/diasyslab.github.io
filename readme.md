@@ -17,6 +17,8 @@ The workflow runs:
 
 > The *docs* folder is a build artifact — it is regenerated on every run and you do **not** need to commit it. To update the site, edit the Google Sheets document (or push a code change), then let the workflow run.
 
+> The site footer used to show an "Edit Content" link straight to the Google Sheets document. That's been removed — the sheet URL is only kept as the `DATA_URL` secret now, not exposed on the public page.
+
 ## How to upload static files to this website
 
 If you need to upload images or any other static files for use on the website, put them in the *[assets](assets)* folder. Everything there is copied into the built site's *assets* folder at build time.
@@ -87,6 +89,7 @@ In addition to the combined */members* page (built from the `Members` tab), you 
 1. Add a tab named **`Members - <Name>`** (e.g. `Members - PI`, `Members - Students`) using the **same columns as the `Members` tab**.
 1. It is automatically published at **`/members/<name>`**, where `<name>` is lower-cased with spaces turned into hyphens (`Members - PI` → `/members/pi`).
 1. Link to it from the `Menu` tab (see above).
+1. To show a page title that differs from its URL slug (e.g. URL `/members/pi` but title "Principal Investigator"), name the tab **`Members - <slug>|<Full Title>`** (e.g. `Members - pi|Principal Investigator`). Without a `|`, the tab name is used for both, as above.
 
 Within each page, column A is still the section heading, so a single page can hold several groups (e.g. a *Students* page with *Ph.D. Student*, *M.S. Student*, … sections).
 
