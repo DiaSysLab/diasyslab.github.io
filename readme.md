@@ -93,9 +93,9 @@ In addition to the combined */members* page (built from the `Members` tab), you 
 
 Within each page, column A is still the section heading, so a single page can hold several groups (e.g. a *Students* page with *Ph.D. Student*, *M.S. Student*, … sections).
 
-## Gallery & member photos (from one Google Drive folder)
+## Gallery, member & research photos (from one Google Drive folder)
 
-Both the `/gallery` page and member photos (the `image` column on the `Members` / `Members - <Name>` tabs) can pull images straight from **one shared Google Drive folder**, instead of pasting a link per photo.
+The `/gallery` page, member photos (the `image` column on the `Members` / `Members - <Name>` tabs), and research photos (the `Image` column on the `Research` tab) can all pull images straight from **one shared Google Drive folder**, instead of pasting a link per photo.
 
 **Setup:**
 
@@ -106,14 +106,17 @@ Both the `/gallery` page and member photos (the `image` column on the `Members` 
       member/
         pi/pic.jpg
         alice/pic.jpg
+      research/
+        example.svg
       gallery/
         album1/  (photos for this album)
         album2/
     ```
 
-2. In the **`Website`** tab, add a `root_folder` key whose value is the **root folder's share link**. (This one root now backs both the gallery and member photos. The old key name `gallery_folder` still works, for sites that haven't renamed it yet.)
+2. In the **`Website`** tab, add a `root_folder` key whose value is the **root folder's share link**. (This one root now backs the gallery, member photos, and research photos. The old key name `gallery_folder` still works, for sites that haven't renamed it yet.)
 3. **Member photo:** in the `image` column, write the path from the root folder, starting with `member/` (e.g. `member/pi/pic.jpg`). It's resolved to a Drive thumbnail at build time.
-4. **Gallery album:** in a **`Gallery`** tab (from row 2), add one row per album:
+4. **Research photo:** same idea, starting with `research/` (e.g. `research/example.svg`), in the `Research` tab's `Image` column.
+5. **Gallery album:** in a **`Gallery`** tab (from row 2), add one row per album:
 
     | Title | Folder | Description (Markdown) |
     | --- | --- | --- |
@@ -125,7 +128,7 @@ Both the `/gallery` page and member photos (the `image` column on the `Members` 
     - Add an album = add a subfolder + a sheet row; add photos = drop files into the subfolder.
     - (You can also put a full Drive folder link in column B instead of a path.)
 
-Anything that doesn't start with `member/` (a full URL, a repo asset path like `/assets/...`) is left as-is, so existing member photos keep working unchanged.
+A member/research image that doesn't start with `member/` or `research/` (a full URL, a repo asset path like `/assets/...`) is left as-is, so existing photos keep working unchanged.
 
 **Requirements:** the `API_KEY` must have the **Google Drive API** enabled (in addition to Sheets), the folders must be publicly viewable, and the page is linked from the `Menu` tab (`Gallery → /gallery`).
 
@@ -138,7 +141,7 @@ Anything that doesn't start with `member/` (a full URL, a repo asset path like `
 | --- | --- | --- |
 | Natural Language Processing | /assets/images/research-example.svg | We study … |
 
-Each row renders as a **title + one image (16:10) + Markdown description**, repeated down the page. The image is any URL or path (a repo asset, a Drive `thumbnail?id=…` link, etc.); a sample 16:10 image lives at `/assets/images/research-example.svg`. Link both pages from the `Menu` tab.
+Each row renders as a **title + one image (16:10) + Markdown description**, repeated down the page. The image is any URL or path (a repo asset, a Drive `thumbnail?id=…` link, etc.), **or** a path starting with `research/` (e.g. `research/example.svg`) resolved from the shared Drive root folder — see [Gallery, member & research photos](#gallery-member--research-photos-from-one-google-drive-folder). A sample 16:10 image lives at `/assets/images/research-example.svg`. Link both pages from the `Menu` tab.
 
 ## Acknowledgements
 
