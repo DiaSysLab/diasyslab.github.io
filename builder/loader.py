@@ -101,6 +101,55 @@ def list_drive_subfolders(folder_id):
     files = json.loads(data).get('files', [])
     return {f['name']: f['id'] for f in files if f.get('id') and f.get('name')}
 
+def find_drive_file_id(folder_id, filename):
+    escaped = filename.replace('\\', '\\\\').replace("'", "\\'")
+    query = "'%s' in parents and name = '%s' and trashed = false" % (folder_id, escaped)
+    params = urllib.parse.urlencode({
+        'q': query,
+        'key': config.API_KEY,
+        'fields': 'files(id)',
+        'pageSize': 1,
+    })
+    url = '%s?%s' % (DRIVE_FILES_URL, params)
+    req = urllib.request.Request(url)
+    with urllib.request.urlopen(req, cafile=certifi.where()) as response:
+        data = response.read()
+    files = json.loads(data).get('files', [])
+    return files[0]['id'] if files else ''
+
+def walk_drive_folder_path(root_id, segments):
+    # Walks a list of subfolder names down from root_id, matching one level
+    # per segment (e.g. ['gallery', 'album1']). Returns the final folder's
+    # id, or '' if the root is unset or any segment along the way is missing.
+    folder_id = root_id
+    for segment in segments:
+        if not folder_id:
+            return ''
+        try:
+            subfolders = list_drive_subfolders(folder_id)
+        except urllib.error.HTTPError:
+            return ''
+        folder_id = subfolders.get(segment, '')
+    return folder_id
+
+def resolve_drive_image_path(root_id, path):
+    # Resolves a Drive-relative path like 'member/pi/pic.jpg' (subfolder
+    # names down to a filename) into a thumbnail URL, by walking subfolders
+    # from root_id and then looking up the file by exact name in the final
+    # folder. Returns '' if the root is unset or any segment isn't found.
+    segments = [s for s in (path or '').strip().strip('/').split('/') if s]
+    if not root_id or not segments:
+        return ''
+    *folder_names, filename = segments
+    folder_id = walk_drive_folder_path(root_id, folder_names)
+    if not folder_id:
+        return ''
+    try:
+        file_id = find_drive_file_id(folder_id, filename)
+    except urllib.error.HTTPError:
+        return ''
+    return 'https://drive.google.com/thumbnail?id=%s&sz=w1600' % file_id if file_id else ''
+
 def load_ranges(doc_id, ranges):
     if not config.API_KEY:
         raise RuntimeError('API_KEY is empty. Set the API_KEY secret (repo Settings -> Secrets and variables -> Actions).')
@@ -164,7 +213,21 @@ def conv_announcements(table):
         })
     return items
 
-def conv_members(table):
+def resolve_member_image(image, root_id):
+    # A path whose first segment is "member" (e.g. "/member/pi/pic.jpg") is
+    # resolved against the Drive root folder; anything else (a full URL, a
+    # repo asset path like "/assets/...") is left untouched.
+    image = (image or '').strip()
+    segments = image.strip('/').split('/')
+    if not image or not root_id or segments[0].lower() != 'member':
+        return image
+    resolved = resolve_drive_image_path(root_id, image)
+    if not resolved:
+        print('Warning: member image path "%s" not found in Drive root folder' % image)
+        return image
+    return resolved
+
+def conv_members(table, root_id=''):
     groups = []
     group = None
     for row in table:
@@ -176,6 +239,7 @@ def conv_members(table):
                 groups.append(group)
             group = {'title': title, 'members': []}
         member = row_to_dict(row, ['name', 'email', 'image', 'description', 'links', 'degree', 'year'], 1)
+        member['image'] = resolve_member_image(member.get('image', ''), root_id)
         group['members'].append(member)
     if group:
         groups.append(group)
@@ -341,7 +405,7 @@ def get_sheet_titles(doc_id):
     data_dict = json.loads(data)
     return [s['properties']['title'] for s in data_dict.get('sheets', [])]
 
-def load_member_pages(doc_id):
+def load_member_pages(doc_id, root_id=''):
     pages = []
     try:
         titles = get_sheet_titles(doc_id)
@@ -362,11 +426,11 @@ def load_member_pages(doc_id):
         pages.append({
             'slug': slug,
             'title': name,
-            'members': conv_members(tables[0]) if tables else [],
+            'members': conv_members(tables[0], root_id) if tables else [],
         })
     return pages
 
-def load_gallery(doc_id, root_folder_link=''):
+def load_gallery(doc_id, root_id=''):
     try:
         tables = load_ranges(doc_id, [GALLERY_RANGE])
     except urllib.error.HTTPError:
@@ -374,10 +438,10 @@ def load_gallery(doc_id, root_folder_link=''):
         return []
     rows = tables[0] if tables else []
 
-    # Album folders are named subfolders inside the root gallery folder
-    # (Website tab 'gallery_folder'), so a row only needs the subfolder name.
+    # Album folders are named subfolders inside the root Drive folder
+    # (Website tab 'root_folder'), so a row only needs the subfolder name
+    # (or a "sub/folder" path, for a folder nested more than one level deep).
     subfolders = {}
-    root_id = get_drive_folder_id(root_folder_link)
     if root_id:
         try:
             subfolders = list_drive_subfolders(root_id)
@@ -397,10 +461,14 @@ def load_gallery(doc_id, root_folder_link=''):
         # Allow a literal "\n" typed in the cell to act as a line break, in
         # addition to real line breaks (Alt+Enter).
         content = (row[2] if len(row) > 2 else '').replace('\\n', '\n')
-        # A full Drive link is used as-is; otherwise treat the value as the
-        # name of a subfolder inside the root gallery folder.
+        # A full Drive link is used as-is; a "sub/folder" path is walked one
+        # segment at a time from the root; otherwise treat the value as the
+        # name of a direct subfolder of the root.
+        stripped_ref = ref.strip('/')
         if '/folders/' in ref or 'drive.google' in ref:
             folder_id = get_drive_folder_id(ref)
+        elif '/' in stripped_ref:
+            folder_id = walk_drive_folder_path(root_id, stripped_ref.split('/'))
         else:
             folder_id = subfolders.get(ref, '')
         photos = []
@@ -447,10 +515,15 @@ def load_data():
     doc_id = get_doc_id(data_url)
     tables = load_ranges(doc_id, RANGES)
     website = conv_website(tables[0])
+    # 'root_folder' is the shared Drive root backing both gallery albums and
+    # member images (member/..., gallery/... subfolders inside it).
+    # 'gallery_folder' is the old key name, kept for sites that haven't
+    # renamed it in their sheet yet.
+    root_id = get_drive_folder_id(website.get('root_folder') or website.get('gallery_folder', ''))
     return {
         'website': website,
         'announcements': conv_announcements(tables[1]),
-        'members': conv_members(tables[2]),
+        'members': conv_members(tables[2], root_id),
         'tags': conv_tags(tables[3]),
         'links': conv_links(tables[4]),
         'pages': conv_pages(tables[5]),
@@ -459,7 +532,7 @@ def load_data():
         'publications': load_publications(doc_id),
         'research': load_research_intro(doc_id),
         'menu': load_menu(doc_id),
-        'member_pages': load_member_pages(doc_id),
-        'gallery': load_gallery(doc_id, website.get('gallery_folder', '')),
+        'member_pages': load_member_pages(doc_id, root_id),
+        'gallery': load_gallery(doc_id, root_id),
     }
 

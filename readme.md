@@ -90,25 +90,39 @@ In addition to the combined */members* page (built from the `Members` tab), you 
 
 Within each page, column A is still the section heading, so a single page can hold several groups (e.g. a *Students* page with *Ph.D. Student*, *M.S. Student*, … sections).
 
-## Gallery (photo albums from Google Drive)
+## Gallery & member photos (from one Google Drive folder)
 
-The `/gallery` page shows photo albums as slideshows. Photos live in **one Google Drive folder**, with **one subfolder per album**.
+Both the `/gallery` page and member photos (the `image` column on the `Members` / `Members - <Name>` tabs) can pull images straight from **one shared Google Drive folder**, instead of pasting a link per photo.
 
 **Setup:**
 
-1. Make a Drive folder to hold all albums, share it *Anyone with the link – Viewer*, and inside it create **one subfolder per album** (e.g. `album1`, `album2`), each holding that album's photos.
-2. In the **`Website`** tab, add a `gallery_folder` key whose value is the **root folder's share link**.
-3. In a **`Gallery`** tab (from row 2), add one row per album:
+1. Make a Drive folder, share it *Anyone with the link – Viewer*, and inside it create top-level subfolders as needed, e.g.:
 
-| Title | Folder | Description (Markdown) |
-| --- | --- | --- |
-| Jeju Conference | album1 | ## We had a great time … |
-| Workshop | album2 | |
+    ```
+    root/
+      member/
+        pi/pic.jpg
+        alice/pic.jpg
+      gallery/
+        album1/  (photos for this album)
+        album2/
+    ```
 
-- **Title** (A) is what's shown on the page; **Folder** (B) is just the **subfolder name** inside the root folder; **Description** (C) is optional Markdown. For line breaks in the description, press **Alt+Enter** in the cell (typing a literal `\n` also works).
-- Every image in the subfolder becomes a slide (ordered by file name). Album order and titles are controlled by the sheet.
-- Add an album = add a subfolder + a sheet row; add photos = drop files into the subfolder.
-- (You can also put a full Drive folder link in column B instead of a name.)
+2. In the **`Website`** tab, add a `root_folder` key whose value is the **root folder's share link**. (This one root now backs both the gallery and member photos. The old key name `gallery_folder` still works, for sites that haven't renamed it yet.)
+3. **Member photo:** in the `image` column, write the path from the root folder, starting with `member/` (e.g. `member/pi/pic.jpg`). It's resolved to a Drive thumbnail at build time.
+4. **Gallery album:** in a **`Gallery`** tab (from row 2), add one row per album:
+
+    | Title | Folder | Description (Markdown) |
+    | --- | --- | --- |
+    | Jeju Conference | gallery/album1 | ## We had a great time … |
+    | Workshop | gallery/album2 | |
+
+    - **Title** (A) is what's shown on the page; **Folder** (B) is the path from the root folder to the album's subfolder (a bare name like `album1` also works if it's a *direct* child of the root); **Description** (C) is optional Markdown. For line breaks in the description, press **Alt+Enter** in the cell (typing a literal `\n` also works).
+    - Every image in that subfolder becomes a slide (ordered by file name). Album order and titles are controlled by the sheet.
+    - Add an album = add a subfolder + a sheet row; add photos = drop files into the subfolder.
+    - (You can also put a full Drive folder link in column B instead of a path.)
+
+Anything that doesn't start with `member/` (a full URL, a repo asset path like `/assets/...`) is left as-is, so existing member photos keep working unchanged.
 
 **Requirements:** the `API_KEY` must have the **Google Drive API** enabled (in addition to Sheets), the folders must be publicly viewable, and the page is linked from the `Menu` tab (`Gallery → /gallery`).
 
