@@ -75,10 +75,10 @@
                                 </div>
                             </template>
                         </div>
-                        <vue-markdown class="authors" :source="item.authors" :html="true" :breaks="false" />
-                        <vue-markdown class="booktitle" :source="item.booktitle" :html="true" :breaks="false" />
+                        <vue-markdown class="authors" :source="item.authors" :html="true" :breaks="false"></vue-markdown>
+                        <vue-markdown class="booktitle" :source="item.booktitle" :html="true" :breaks="false"></vue-markdown>
                         <div class="link-buttons link-buttons-small">
-                            <vue-markdown :source="item.links" :breaks="false" :anchorAttributes="{ target: '_blank' }" />
+                            <vue-markdown :source="item.links" :breaks="false" :anchorAttributes="{ target: '_blank' }"></vue-markdown>
                         </div>
                     </div>
                 </template>
