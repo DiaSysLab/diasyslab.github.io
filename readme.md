@@ -2,20 +2,20 @@
 
 This is a static website for a research group, hosted as GitHub Pages.
 
-The website rebuilds itself every 30 minutes from a Google Sheets document via a scheduled GitHub Actions job, so editing the spreadsheet is enough to update the site.
+The website rebuilds itself from a Google Sheets document via a GitHub Actions job, so editing the spreadsheet is enough to update the site — trigger a rebuild with the **"🚀 Update Site" button inside the spreadsheet** (see below) and it's live in a couple of minutes, no 30-minute wait.
 
-![Builder](https://github.com/TBDLAB1/tbdlab1.github.io/actions/workflows/builder.yml/badge.svg)
+![Builder](https://github.com/DiaSysLab/diasyslab.github.io/actions/workflows/builder.yml/badge.svg)
 
 ## How does this website work?
 
 The [Builder workflow](.github/workflows/builder.yml) runs the Python builder in *[builder](builder)*, which downloads the contents from Google Sheets and renders the static site into the *docs* folder **on the runner**. It then deploys that folder straight to GitHub Pages as an artifact — **nothing is committed back to the repository.**
 
 The workflow runs:
-- every 30 minutes (scheduled),
-- on every push to *master*, and
-- manually via the **Run workflow** button on the [Actions](https://github.com/TBDLAB1/tbdlab1.github.io/actions/workflows/builder.yml) page.
+- on every push to *master*,
+- manually via the **Run workflow** button on the [Actions](https://github.com/DiaSysLab/diasyslab.github.io/actions/workflows/builder.yml) page, or
+- from the spreadsheet itself, via the one-click button described in [Updating the site instantly from Google Sheets](#updating-the-site-instantly-from-google-sheets) — this is the normal way to publish a content edit, so you don't have to wait for a scheduled run (there isn't one).
 
-> The *docs* folder is a build artifact — it is regenerated on every run and you do **not** need to commit it. To update the site, edit the Google Sheets document (or push a code change), then let the workflow run.
+> The *docs* folder is a build artifact — it is regenerated on every run and you do **not** need to commit it. To update the site, edit the Google Sheets document, then trigger a rebuild (or push a code change).
 
 > The site footer used to show an "Edit Content" link straight to the Google Sheets document. That's been removed — the sheet URL is only kept as the `DATA_URL` secret now, not exposed on the public page.
 
@@ -64,6 +64,26 @@ The builder needs a Google API key to read the Google Sheets document. Add it as
 1. Create an API key in the [Google Cloud Console](https://console.cloud.google.com/apis/credentials) and enable the **Google Sheets API** for its project.
 1. Set **Application restrictions → None** (no HTTP referrer restriction). The builder calls the API server-side with no referrer, so a referrer-restricted key fails with `403`.
 1. Add the key as the `API_KEY` secret.
+
+## Updating the site instantly from Google Sheets
+
+There's no scheduled rebuild — the site updates when the [Builder workflow](.github/workflows/builder.yml) is triggered: by a push to *master*, from the **Run workflow** button on GitHub's Actions tab, or, for a content-only edit, with a one-click **"🚀 Update Site"** menu button added directly to the spreadsheet ([google-apps-script/update-site-button.gs](google-apps-script/update-site-button.gs)) — no need to leave the sheet or touch GitHub's UI.
+
+**Setup (one-time):**
+
+1. **Create a GitHub token**, scoped to just this repo: [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new) → *Resource owner*: the account/org that owns the repo → *Repository access*: **Only select repositories** → this repo → *Permissions*: **Actions: Read and write** (nothing else needed). Generate it and copy the token (shown once).
+1. In the Google Sheets document: **Extensions → Apps Script**, delete any placeholder code, and paste in the contents of [google-apps-script/update-site-button.gs](google-apps-script/update-site-button.gs). Save the project.
+1. In the Apps Script editor, open **Project Settings** (gear icon) → **Script Properties** → **Add script property**, and add three:
+
+    | Property | Value |
+    | --- | --- |
+    | `GITHUB_TOKEN` | the token from step 1 |
+    | `GITHUB_OWNER` | the GitHub account/org name (e.g. `DiaSysLab`) |
+    | `GITHUB_REPO` | the repo name (e.g. `diasyslab.github.io`) |
+
+1. Reload the spreadsheet. A new **🚀 Update Site** menu appears next to Help. The first click asks you to authorize the script (it needs permission to call an external API) — review and allow it.
+
+**To use it:** after editing the spreadsheet, click **🚀 Update Site → Update site now**. The site is live in a couple of minutes; check the repo's **Actions** tab for progress.
 
 ## Configuring the navigation menu
 

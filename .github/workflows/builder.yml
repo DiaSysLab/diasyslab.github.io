@@ -3,10 +3,8 @@ on:
   push:
     branches:
       - master
-  schedule:
-    # Every 30 min, but offset from :00/:30 — those are peak times when
-    # scheduled runs pile up and hosted runners are hardest to acquire.
-    - cron: "17,47 * * * *"
+  # Triggered on demand: manually via the Actions tab, or by the "update
+  # site now" button in the Google Sheets document (see readme.md).
   workflow_dispatch:
 
 # Permissions required to deploy to GitHub Pages directly from Actions.
