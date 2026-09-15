@@ -19,7 +19,7 @@
                 <div class="announcement row-item">
                     {% if announcement.title %}
                     <h4 class="announcement-title">
-                        {{ announcement.title }}
+                        {{ announcement.title | markdown_inline }}
                     </h4>
                     {% endif %}
                     <div class="announcement-content">

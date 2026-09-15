@@ -10,7 +10,10 @@ def init_env():
         loader=PackageLoader('builder', 'templates'),
         autoescape=select_autoescape(['html', 'xml'])
     )
-    md = markdown.Markdown(extensions=['meta'])
+    # 'nl2br' turns a single line break in the sheet cell (Alt+Enter) into a
+    # visible <br>, instead of collapsing it into a space like plain Markdown
+    # does (a blank line is still needed for a new paragraph).
+    md = markdown.Markdown(extensions=['meta', 'nl2br'])
     env.filters['markdown'] = lambda text: Markup(md.reset().convert(text or ''))
 
     def markdown_inline(text):
