@@ -1,5 +1,6 @@
 import json
 import markdown
+import re
 import urllib.parse
 from datetime import datetime
 from jinja2 import Environment, PackageLoader, Markup, select_autoescape
@@ -24,6 +25,16 @@ def init_env():
             html = html[3:-4]
         return Markup(html)
     env.filters['markdown_inline'] = markdown_inline
+
+    def markdown_links(text):
+        # A "links" field (Paper/News/Code buttons) is meant to flow as a
+        # row of inline buttons, one link per line just for readability in
+        # the sheet — so, unlike 'markdown', collapse a single line break
+        # back into a space rather than a <br> (a blank line still starts a
+        # new paragraph).
+        text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text or '')
+        return Markup(md.reset().convert(text))
+    env.filters['markdown_links'] = markdown_links
 
     env.filters['jsonify'] = lambda text: json.dumps(text)
 

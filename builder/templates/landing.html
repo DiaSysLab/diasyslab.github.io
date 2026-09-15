@@ -44,7 +44,7 @@
                     <div class="authors">{{ item.authors | markdown_inline }}</div>
                     <div class="booktitle">{{ item.booktitle | markdown_inline }}</div>
                     <div class="link-buttons link-buttons-small">
-                        {{ item.links | markdown }}
+                        {{ item.links | markdown_links }}
                     </div>
                 </div>
                 {% endfor %}
