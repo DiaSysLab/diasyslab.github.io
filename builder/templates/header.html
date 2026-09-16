@@ -16,18 +16,18 @@
                 {% if item.children %}
                 <div class="header-dropdown">
                     {% if item.url %}
-                    <a class="header-menu-item header-dropdown-label" href="{{ item.url }}">{{ item.title }} <span class="header-dropdown-caret">▾</span></a>
+                    <a class="header-menu-item header-dropdown-label" href="{{ item.url }}"{% if item.url.startswith('http') %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.title }} <span class="header-dropdown-caret">▾</span></a>
                     {% else %}
                     <span class="header-menu-item header-dropdown-label" tabindex="0">{{ item.title }} <span class="header-dropdown-caret">▾</span></span>
                     {% endif %}
                     <div class="header-submenu">
                         {% for child in item.children %}
-                        <a class="header-submenu-item" href="{{ child.url }}">{{ child.title }}</a>
+                        <a class="header-submenu-item" href="{{ child.url }}"{% if child.url.startswith('http') %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ child.title }}</a>
                         {% endfor %}
                     </div>
                 </div>
                 {% else %}
-                <a class="header-menu-item" href="{{ item.url }}">{{ item.title }}</a>
+                <a class="header-menu-item" href="{{ item.url }}"{% if item.url.startswith('http') %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.title }}</a>
                 {% endif %}
             {% endfor %}
         </div>

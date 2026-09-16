@@ -15,7 +15,16 @@ def init_env():
     # visible <br>, instead of collapsing it into a space like plain Markdown
     # does (a blank line is still needed for a new paragraph).
     md = markdown.Markdown(extensions=['meta', 'nl2br'])
-    env.filters['markdown'] = lambda text: Markup(md.reset().convert(text or ''))
+
+    # Every link Markdown produces with an http(s):// href is external (a
+    # relative "/path" or "#anchor" or "mailto:" link stays untouched), so
+    # send it to a new tab. This also catches a raw <a href="http...">
+    # someone typed directly, since Markdown passes raw HTML through as-is.
+    external_link_re = re.compile(r'<a href="(https?://[^"]*)"')
+    def open_external_links_in_new_tab(html):
+        return external_link_re.sub(r'<a target="_blank" rel="noopener noreferrer" href="\1"', html)
+
+    env.filters['markdown'] = lambda text: Markup(open_external_links_in_new_tab(md.reset().convert(text or '')))
 
     def markdown_inline(text):
         # Render Markdown but drop a single wrapping <p></p> so the result can
@@ -23,7 +32,7 @@ def init_env():
         html = md.reset().convert(text or '')
         if html[:3] == '<p>' and html[-4:] == '</p>' and html.count('<p>') == 1:
             html = html[3:-4]
-        return Markup(html)
+        return Markup(open_external_links_in_new_tab(html))
     env.filters['markdown_inline'] = markdown_inline
 
     def markdown_links(text):
@@ -33,7 +42,7 @@ def init_env():
         # back into a space rather than a <br> (a blank line still starts a
         # new paragraph).
         text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text or '')
-        return Markup(md.reset().convert(text))
+        return Markup(open_external_links_in_new_tab(md.reset().convert(text)))
     env.filters['markdown_links'] = markdown_links
 
     env.filters['jsonify'] = lambda text: json.dumps(text)

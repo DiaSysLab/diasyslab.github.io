@@ -27,17 +27,17 @@
                     {% endif %}
                     {% if link.url %}
                     <div class="links">
-                        <a href="{{ link.url }}">Link</a>
+                        <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer">Link</a>
                     </div>
                     {% elif link.query %}
                     <div class="links">
                         {% if link.show_this_year %}
-                        <a href="{{ link.this_year_url }}">
+                        <a href="{{ link.this_year_url }}" target="_blank" rel="noopener noreferrer">
                             {{ link.this_year_label }}
                         </a>
                         {% endif %}
                         {% if link.show_next_year %}
-                        <a href="{{ link.next_year_url }}">
+                        <a href="{{ link.next_year_url }}" target="_blank" rel="noopener noreferrer">
                             {{ link.next_year_label }}
                         </a>
                         {% endif %}
