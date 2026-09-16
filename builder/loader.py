@@ -217,11 +217,11 @@ def conv_announcements(table):
 # will follow. A path is only sent through Drive resolution when its first
 # segment is one of these; anything else (a full URL, a repo asset path like
 # "/assets/...") is left untouched, so plain URLs keep working everywhere.
-DRIVE_IMAGE_FOLDERS = {'member', 'research'}
+DRIVE_IMAGE_FOLDERS = {'member'}
 
 def resolve_drive_image(image, root_id):
-    # A path like "/member/pi/pic.jpg" or "/research/example.svg" is resolved
-    # against the Drive root folder; see DRIVE_IMAGE_FOLDERS.
+    # A path like "/member/pi/pic.jpg" is resolved against the Drive root
+    # folder; see DRIVE_IMAGE_FOLDERS.
     image = (image or '').strip()
     segments = image.strip('/').split('/')
     if not image or not root_id or segments[0].lower() not in DRIVE_IMAGE_FOLDERS:
@@ -231,6 +231,24 @@ def resolve_drive_image(image, root_id):
         print('Warning: image path "%s" not found in Drive root folder' % image)
         return image
     return resolved
+
+# Research topic images live in the repo instead of Drive (faster, and not
+# subject to Drive's thumbnail cropping/aspect ratio).
+RESEARCH_IMAGE_DIR = '/assets/images/researches/'
+
+def resolve_research_image(image):
+    # A bare filename (e.g. "dialsm.jpg") is resolved to
+    # assets/images/researches/ in this repo. A full URL or an absolute path
+    # (e.g. "/assets/images/research-example.svg") is used as-is; a path
+    # already rooted at "assets/" just gets its leading slash added back.
+    image = (image or '').strip()
+    if not image:
+        return image
+    if image.startswith('assets/'):
+        return '/' + image
+    if image.startswith('/') or re.match(r'^[a-zA-Z][a-zA-Z0-9+.-]*://', image):
+        return image
+    return RESEARCH_IMAGE_DIR + image
 
 def conv_members(table, root_id=''):
     groups = []
@@ -528,7 +546,7 @@ def load_gallery(doc_id, root_id=''):
         albums.append({'title': title, 'content': content, 'photos': photos})
     return albums
 
-def conv_research_intro(table, root_id=''):
+def conv_research_intro(table):
     # Research-introduction page: one row per topic (title, image, Markdown).
     items = []
     for row in table:
@@ -539,7 +557,7 @@ def conv_research_intro(table, root_id=''):
         content = (row[2] if len(row) > 2 else '').replace('\\n', '\n')
         if not title and not image and not content.strip():
             continue
-        items.append({'title': title, 'image': resolve_drive_image(image, root_id), 'content': content})
+        items.append({'title': title, 'image': resolve_research_image(image), 'content': content})
     return items
 
 def load_publications(doc_id):
@@ -549,21 +567,21 @@ def load_publications(doc_id):
         return []
     return conv_research(tables[0]) if tables else []
 
-def load_research_intro(doc_id, root_id=''):
+def load_research_intro(doc_id):
     try:
         tables = load_ranges(doc_id, [RESEARCH_RANGE])
     except urllib.error.HTTPError:
         return []
-    return conv_research_intro(tables[0], root_id) if tables else []
+    return conv_research_intro(tables[0]) if tables else []
 
 def load_data():
     data_url = config.DATA_URL
     doc_id = get_doc_id(data_url)
     tables = load_ranges(doc_id, RANGES)
     website = conv_website(tables[0])
-    # 'root_folder' is the shared Drive root backing gallery albums, member
-    # images, and research images (member/..., gallery/..., research/...
-    # subfolders inside it).
+    # 'root_folder' is the shared Drive root backing gallery albums and
+    # member images (member/..., gallery/... subfolders inside it). Research
+    # images live in the repo instead (see resolve_research_image).
     # 'gallery_folder' is the old key name, kept for sites that haven't
     # renamed it in their sheet yet.
     root_id = get_drive_folder_id(website.get('root_folder') or website.get('gallery_folder', ''))
@@ -578,7 +596,7 @@ def load_data():
         'redirects': conv_redirects(tables[6]),
         'personal': load_personal(tables[7]),
         'publications': load_publications(doc_id),
-        'research': load_research_intro(doc_id, root_id),
+        'research': load_research_intro(doc_id),
         'menu': load_menu(doc_id),
         'member_pages': load_member_pages(doc_id, root_id),
         'gallery': load_gallery(doc_id, root_id),
