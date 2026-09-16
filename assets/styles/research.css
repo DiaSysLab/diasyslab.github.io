@@ -3,10 +3,8 @@
 }
 .research-intro-image {
     display: block;
-    width: 100%;
-    max-width: 640px;
-    aspect-ratio: 16 / 10;
-    object-fit: cover;
+    height: auto;
+    max-width: min(640px, 100%);
     border-radius: 6px;
     margin: 0 0 1.25rem 0;
     background-color: var(--light-grey-color);

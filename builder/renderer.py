@@ -26,10 +26,18 @@ def init_env():
 
     env.filters['markdown'] = lambda text: Markup(open_external_links_in_new_tab(md.reset().convert(text or '')))
 
+    # Strips a leading '#'..'######' (an ATX heading marker) from the start
+    # of any line before rendering 'markdown_inline' text. That text already
+    # sits inside a heading element (a title), so honoring '#' there would
+    # nest another <h1-6> inside it — mangling spacing/line-height instead of
+    # just making it bold, which is what someone typing '#' usually wants.
+    heading_marker_re = re.compile(r'(?m)^#{1,6}\s*')
+
     def markdown_inline(text):
         # Render Markdown but drop a single wrapping <p></p> so the result can
         # sit inside an inline context such as a heading.
-        html = md.reset().convert(text or '')
+        text = heading_marker_re.sub('', text or '')
+        html = md.reset().convert(text)
         if html[:3] == '<p>' and html[-4:] == '</p>' and html.count('<p>') == 1:
             html = html[3:-4]
         return Markup(open_external_links_in_new_tab(html))
