@@ -40,5 +40,10 @@ def copy_assets():
 
 def build():
     init_build_path()
-    render_pages()
+    # copy_assets() must run before render_pages(): loading the data (inside
+    # render_pages) downloads member photos from Drive straight into
+    # docs/assets/images/members-drive-cache/, and copy_assets() wipes and
+    # recreates docs/assets/ from the source assets/ folder — running it
+    # after render_pages() would delete those downloaded photos.
     copy_assets()
+    render_pages()

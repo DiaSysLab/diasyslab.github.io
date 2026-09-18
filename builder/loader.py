@@ -1,5 +1,7 @@
 import certifi
 import dateutil.parser
+import functools
+import os
 import re
 import json
 import urllib
@@ -86,6 +88,11 @@ def list_drive_images(folder_id):
         'url': 'https://drive.google.com/thumbnail?id=%s&sz=w1600' % f['id'],
     } for f in files if f.get('id')]
 
+# Cached for the life of one build: several members/albums commonly share
+# the same Drive folder (e.g. all students under "member/student"), and
+# without this every one of them would re-list or re-query that same
+# folder from scratch.
+@functools.lru_cache(maxsize=None)
 def list_drive_subfolders(folder_id):
     query = "'%s' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false" % folder_id
     params = urllib.parse.urlencode({
@@ -101,6 +108,7 @@ def list_drive_subfolders(folder_id):
     files = json.loads(data).get('files', [])
     return {f['name']: f['id'] for f in files if f.get('id') and f.get('name')}
 
+@functools.lru_cache(maxsize=None)
 def find_drive_file_id(folder_id, filename):
     escaped = filename.replace('\\', '\\\\').replace("'", "\\'")
     query = "'%s' in parents and name = '%s' and trashed = false" % (folder_id, escaped)
@@ -132,11 +140,50 @@ def walk_drive_folder_path(root_id, segments):
         folder_id = subfolders.get(segment, '')
     return folder_id
 
+# Where downloaded Drive images are written, relative to the build output
+# (config.BUILD_PATH). Written directly into the *build output*, not the
+# tracked assets/ source folder — like the rest of docs/, it's regenerated
+# every build and never committed.
+MEMBER_IMAGE_CACHE_DIR = 'assets/images/members-drive-cache'
+
+@functools.lru_cache(maxsize=None)
+def download_drive_image(file_id, filename):
+    # Downloads the file's bytes into the build output so a site visitor
+    # loads it from this site's own CDN, instead of every page view hitting
+    # Google Drive's slower thumbnail endpoint directly. Falls back to that
+    # thumbnail URL if the download itself fails, so a Drive hiccup degrades
+    # rather than breaks the image. Cached per (file_id, filename) so the
+    # same photo referenced twice in one build downloads only once.
+    ext = os.path.splitext(filename)[1] or '.jpg'
+    dest_name = file_id + ext
+    dest_dir = os.path.join(config.BUILD_PATH, *MEMBER_IMAGE_CACHE_DIR.split('/'))
+    dest_path = os.path.join(dest_dir, dest_name)
+    url_path = '/%s/%s' % (MEMBER_IMAGE_CACHE_DIR, dest_name)
+    thumbnail_url = 'https://drive.google.com/thumbnail?id=%s&sz=w1600' % file_id
+
+    download_url = '%s/%s?alt=media&key=%s' % (DRIVE_FILES_URL, file_id, config.API_KEY)
+    req = urllib.request.Request(download_url)
+    try:
+        with urllib.request.urlopen(req, cafile=certifi.where()) as response:
+            data = response.read()
+    except Exception as e:
+        # Any failure here (HTTP error, dropped connection, timeout, ...)
+        # should degrade to the slower-but-working thumbnail URL rather than
+        # fail the whole build.
+        print('Warning: failed to download Drive file %s (%s); using the (slower) Drive thumbnail URL instead' % (file_id, e))
+        return thumbnail_url
+
+    os.makedirs(dest_dir, exist_ok=True)
+    with open(dest_path, 'wb') as f:
+        f.write(data)
+    return url_path
+
 def resolve_drive_image_path(root_id, path):
     # Resolves a Drive-relative path like 'member/pi/pic.jpg' (subfolder
-    # names down to a filename) into a thumbnail URL, by walking subfolders
-    # from root_id and then looking up the file by exact name in the final
-    # folder. Returns '' if the root is unset or any segment isn't found.
+    # names down to a filename) by walking subfolders from root_id, looking
+    # up the file by exact name in the final folder, and downloading it into
+    # the build output (see download_drive_image). Returns '' if the root is
+    # unset or any segment isn't found.
     segments = [s for s in (path or '').strip().strip('/').split('/') if s]
     if not root_id or not segments:
         return ''
@@ -148,7 +195,7 @@ def resolve_drive_image_path(root_id, path):
         file_id = find_drive_file_id(folder_id, filename)
     except urllib.error.HTTPError:
         return ''
-    return 'https://drive.google.com/thumbnail?id=%s&sz=w1600' % file_id if file_id else ''
+    return download_drive_image(file_id, filename) if file_id else ''
 
 def load_ranges(doc_id, ranges):
     if not config.API_KEY:
