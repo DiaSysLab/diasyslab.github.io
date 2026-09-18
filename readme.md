@@ -173,6 +173,10 @@ A member/research image that doesn't start with `member/` or `research/` (a full
 
 Each row renders as a **title + one image (16:10) + Markdown description**, repeated down the page. The image is any URL or path (a repo asset, a Drive `thumbnail?id=…` link, etc.), **or** a path starting with `research/` (e.g. `research/example.svg`) resolved from the shared Drive root folder — see [Gallery, member & research photos](#gallery-member--research-photos-from-one-google-drive-folder). A sample 16:10 image lives at `/assets/images/research-example.svg`. Link both pages from the `Menu` tab.
 
+## About this fork
+
+This site started from an open-source template built by [Jeongmin Byun](https://jmbyun.github.io/), with funding and support from [JinYeong Bak](https://nosyu.github.io/) — many thanks to both for making this possible. DiaSys Lab has since customized it with Google Drive–backed photo galleries, members page, Markdown formatting shortcuts, and more, to fit our own needs.
+
 ## Acknowledgements
 
 This work was supported and funded by [JinYeong Bak](https://nosyu.github.io/). The developer of this repo is [Jeongmin Byun](https://jmbyun.github.io/).
