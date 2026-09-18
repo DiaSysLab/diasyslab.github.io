@@ -69,6 +69,45 @@ def get_drive_folder_id(link):
     tokens = [t for t in link.split('/') if t]
     return max(tokens, key=len) if tokens else ''
 
+# Where downloaded Drive images (member photos, gallery photos) are written,
+# relative to the build output (config.BUILD_PATH). Written directly into
+# the *build output*, not the tracked assets/ source folder — like the rest
+# of docs/, it's regenerated every build and never committed. A single
+# shared folder is fine since Drive file ids are unique.
+DRIVE_IMAGE_CACHE_DIR = 'assets/images/drive-cache'
+
+@functools.lru_cache(maxsize=None)
+def download_drive_image(file_id, filename):
+    # Downloads the file's bytes into the build output so a site visitor
+    # loads it from this site's own CDN, instead of every page view hitting
+    # Google Drive's slower thumbnail endpoint directly. Falls back to that
+    # thumbnail URL if the download itself fails, so a Drive hiccup degrades
+    # rather than breaks the image. Cached per (file_id, filename) so the
+    # same photo referenced twice in one build downloads only once.
+    ext = os.path.splitext(filename)[1] or '.jpg'
+    dest_name = file_id + ext
+    dest_dir = os.path.join(config.BUILD_PATH, *DRIVE_IMAGE_CACHE_DIR.split('/'))
+    dest_path = os.path.join(dest_dir, dest_name)
+    url_path = '/%s/%s' % (DRIVE_IMAGE_CACHE_DIR, dest_name)
+    thumbnail_url = 'https://drive.google.com/thumbnail?id=%s&sz=w1600' % file_id
+
+    download_url = '%s/%s?alt=media&key=%s' % (DRIVE_FILES_URL, file_id, config.API_KEY)
+    req = urllib.request.Request(download_url)
+    try:
+        with urllib.request.urlopen(req, cafile=certifi.where()) as response:
+            data = response.read()
+    except Exception as e:
+        # Any failure here (HTTP error, dropped connection, timeout, ...)
+        # should degrade to the slower-but-working thumbnail URL rather than
+        # fail the whole build.
+        print('Warning: failed to download Drive file %s (%s); using the (slower) Drive thumbnail URL instead' % (file_id, e))
+        return thumbnail_url
+
+    os.makedirs(dest_dir, exist_ok=True)
+    with open(dest_path, 'wb') as f:
+        f.write(data)
+    return url_path
+
 def list_drive_images(folder_id):
     query = "'%s' in parents and mimeType contains 'image/' and trashed = false" % folder_id
     params = urllib.parse.urlencode({
@@ -85,7 +124,7 @@ def list_drive_images(folder_id):
     files = json.loads(data).get('files', [])
     return [{
         'name': f.get('name', ''),
-        'url': 'https://drive.google.com/thumbnail?id=%s&sz=w1600' % f['id'],
+        'url': download_drive_image(f['id'], f.get('name', '')),
     } for f in files if f.get('id')]
 
 # Cached for the life of one build: several members/albums commonly share
@@ -139,44 +178,6 @@ def walk_drive_folder_path(root_id, segments):
             return ''
         folder_id = subfolders.get(segment, '')
     return folder_id
-
-# Where downloaded Drive images are written, relative to the build output
-# (config.BUILD_PATH). Written directly into the *build output*, not the
-# tracked assets/ source folder — like the rest of docs/, it's regenerated
-# every build and never committed.
-MEMBER_IMAGE_CACHE_DIR = 'assets/images/members-drive-cache'
-
-@functools.lru_cache(maxsize=None)
-def download_drive_image(file_id, filename):
-    # Downloads the file's bytes into the build output so a site visitor
-    # loads it from this site's own CDN, instead of every page view hitting
-    # Google Drive's slower thumbnail endpoint directly. Falls back to that
-    # thumbnail URL if the download itself fails, so a Drive hiccup degrades
-    # rather than breaks the image. Cached per (file_id, filename) so the
-    # same photo referenced twice in one build downloads only once.
-    ext = os.path.splitext(filename)[1] or '.jpg'
-    dest_name = file_id + ext
-    dest_dir = os.path.join(config.BUILD_PATH, *MEMBER_IMAGE_CACHE_DIR.split('/'))
-    dest_path = os.path.join(dest_dir, dest_name)
-    url_path = '/%s/%s' % (MEMBER_IMAGE_CACHE_DIR, dest_name)
-    thumbnail_url = 'https://drive.google.com/thumbnail?id=%s&sz=w1600' % file_id
-
-    download_url = '%s/%s?alt=media&key=%s' % (DRIVE_FILES_URL, file_id, config.API_KEY)
-    req = urllib.request.Request(download_url)
-    try:
-        with urllib.request.urlopen(req, cafile=certifi.where()) as response:
-            data = response.read()
-    except Exception as e:
-        # Any failure here (HTTP error, dropped connection, timeout, ...)
-        # should degrade to the slower-but-working thumbnail URL rather than
-        # fail the whole build.
-        print('Warning: failed to download Drive file %s (%s); using the (slower) Drive thumbnail URL instead' % (file_id, e))
-        return thumbnail_url
-
-    os.makedirs(dest_dir, exist_ok=True)
-    with open(dest_path, 'wb') as f:
-        f.write(data)
-    return url_path
 
 def resolve_drive_image_path(root_id, path):
     # Resolves a Drive-relative path like 'member/pi/pic.jpg' (subfolder
